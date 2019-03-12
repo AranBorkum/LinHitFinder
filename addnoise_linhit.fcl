@@ -1,0 +1,147 @@
+# addnoise_linhit.fcl
+
+# Read in the noise free waveform, add noise and pedestals,
+# then find the trigger primatives for the induction hits
+# on the noisey waveforms, and save these primatives as "Hits"
+# to an output TTree.
+
+# You can run any number of trigger primative finders. You do
+# need to link each to a DAQSimAna analyzer. See the bottom of
+# this file for examples on how this is done.
+
+BEGIN_PROLOG
+
+# This is the generic linear hit finder call. TO make your own,
+# add another call to "@local::linhitalg1" to the producers list,
+# and modify its settings later on in the file.
+
+linhitalg1: 
+{
+   module_type: "LinHitFinder"
+   InputTag: "simwire"
+   finder: 
+   {
+      tool_type: "LinHitFinderAlg1"
+   }
+}
+
+END_PROLOG
+
+#include "DAQSimAna.fcl"
+#include "standard_detsim_dune10kt_1x2x6.fcl"
+
+process_name: PrimSim
+
+services:                        @local::dunefd_simulation_services
+services.TFileService:           { fileName: "DAQSimAna_plus_linhit_multithreshold.root" }
+services.TimeTracker:            {}
+services.MemoryTracker:          {} # default is one
+services.RandomNumberGenerator:  {} #ART native random number generator
+// services.FileCatalogMetadata: @local::art_file_catalog_mc
+services.NuRandomService:        @local::per_event_NuRandomService  # seedservice.fcl
+services.message:                @local::dune_message_services_prod
+
+#source is now a root file
+source: 
+{
+  module_type: RootInput
+  maxEvents:  -1        # Number of events to create
+}
+
+# Define and configure some modules to do work on each event.
+# First modules are defined; they are scheduled later.
+# Modules are grouped by type.
+
+physics: {
+   producers: {
+      simwire: {
+         module_type:       "SimWireDUNE"
+         SimChannelLabel:   "largeant"
+         NoiseOn:            true
+         PedestalOn:         true
+         DistortOn:          false
+         SuppressOn:         false
+         KeepEmptyChannels:  true
+         AdcSimulator:       "adcsim_ideal"
+         UseRawDigitInput:   true
+         RawDigitInputLabel: "daq"
+      }
+
+      # You can add any number of trigger primitive finders here. Make
+      # sure each one has a distinct name, and has a corresponding
+      # daqsimana analyzer (otherwise you won't get a corresponding
+      # TTree in the output file. Also make sure to add it to the "simulate" list below
+      linhit1500: @local::linhitalg1
+      linhit2000: @local::linhitalg1
+      linhit2500: @local::linhitalg1
+      linhit3000: @local::linhitalg1
+
+      rns:            { module_type: "RandomNumberSaver" }
+   }
+
+   analyzers:
+   {
+      # Create a DAQSimAna for each trigger primitive finders. Make
+      # sure to add each one to the "ana" list below
+      daqanalinhit1500: @local::standard_daqsimana
+      daqanalinhit2000: @local::standard_daqsimana
+      daqanalinhit2500: @local::standard_daqsimana
+      daqanalinhit3000: @local::standard_daqsimana
+
+      waveformstotree: {
+         module_type: "WaveformsToTree"
+         InputTag: "simwire"
+         MaxChannels: 10
+      }
+   }
+
+   simulate: [ rns, simwire, linhit1500, linhit2000, linhit2500, linhit3000 ]
+   ana: [ daqanalinhit1500, daqanalinhit2000, daqanalinhit2500, daqanalinhit3000, waveformstotree ]
+
+   trigger_paths: [simulate]
+   end_paths: [ ana ]
+
+}
+
+# Modify the settings of each of the trigger primitive finders. If you
+# want to use a different trigger primitive finder class, set
+# "physics.producers.<itemname>.finder.tool_type: MyNewTriggerPrimitiveFinderTool"
+physics.producers.linhit1500.finder.Threshold: 1500
+physics.producers.linhit2000.finder.Threshold: 2000
+physics.producers.linhit2500.finder.Threshold: 2500
+physics.producers.linhit3000.finder.Threshold: 3000
+
+# Set the HitLabel to make sure each DaqAnaSim reads hits from its
+#  corresponding TriggerPrimitiveFinder
+physics.analyzers.daqanalinhit1500.HitLabel: "linhit1500"
+physics.analyzers.daqanalinhit1500.MARLEYLabel: "marley"
+
+physics.analyzers.daqanalinhit2000.HitLabel: "linhit2000"
+physics.analyzers.daqanalinhit2000.MARLEYLabel: "marley"
+
+physics.analyzers.daqanalinhit2500.HitLabel: "linhit2500"
+physics.analyzers.daqanalinhit2500.MARLEYLabel: "marley"
+
+physics.analyzers.daqanalinhit3000.HitLabel: "linhit3000"
+physics.analyzers.daqanalinhit3000.MARLEYLabel: "marley"
+
+# =====================================================================
+# You probably won't need to change anything below here
+
+# Shut up the backtracker
+services.message.destinations.LogStandardOut.categories.BackTracker.limit: 0
+services.message.destinations.LogStandardError.categories.BackTracker.limit: 0
+
+# DetSim services. These are used by SimWire to add noise and
+# pedestals to the incoming (noise-free) waveforms
+services.SimChannelExtractService: @local::scxgeneric
+services.ChannelNoiseService:      @local::chnoiseold
+services.PedestalAdditionService:  @local::padprovided
+services.AdcDistortService:        @local::stuckbits
+services.AdcSuppressService:       @local::zsnone
+services.AdcCompressService:       @local::cmpreplace
+services.DetPedestalService:       @local::dune_fixedpeds
+
+
+
+
