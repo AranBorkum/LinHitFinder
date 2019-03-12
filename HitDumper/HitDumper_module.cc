@@ -98,6 +98,13 @@ void HitDumper::analyze(art::Event const& e) {
     bool   ThereIsAPeak          = false;
     bool   ThereIsAnotherPeak    = false;
 
+    double RA = 0;
+    for (size_t i=0; i<digit[event].ADCs().size(); ++i) {
+      RA += ((double)digit[event].ADCs()[i] - RA)/((double)i + 1);
+      std::cout << RA << " ";
+    }
+					    
+
     // Calculating the pedestal value
     for (size_t ADC=5; ADC<digit[event].ADCs().size(); ++ADC) 
       pedestal += digit[event].ADCs()[ADC];

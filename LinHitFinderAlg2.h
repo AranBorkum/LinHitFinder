@@ -1,5 +1,5 @@
-#ifndef LINHITFINDERALG1_H
-#define LINHITFINDERALG1_H
+#ifndef LINHITFINDERALG2_H
+#define LINHITFINDERALG2_H
 
 #include "art/Framework/Services/Registry/ActivityRegistry.h"
 #include "art/Utilities/ToolMacros.h"
@@ -7,10 +7,10 @@
 
 #include "dune/LinHitFinder/LinHitFinderAlgorithm.h"
 
-class LinHitFinderAlg1 : public LinHitFinderAlgorithm {
+class LinHitFinderAlg2 : public LinHitFinderAlgorithm {
 
  public:
-  explicit LinHitFinderAlg1(fhicl::ParameterSet const & p);
+  explicit LinHitFinderAlg2(fhicl::ParameterSet const & p);
 
   virtual std::vector<LinHitFinderAlgorithm::Hit>
     findHits(const std::vector<unsigned int>& channelNumbers,
@@ -34,8 +34,7 @@ class LinHitFinderAlg1 : public LinHitFinderAlgorithm {
   unsigned int       fDownsampleFactor   ;
   std::vector<short> fFilterTaps         ;
   int                fMultiplier         ;
-  std::string        fOutputFilename     ;
-  std::ofstream      fOutputFile         ;
+
 };
 
 #endif

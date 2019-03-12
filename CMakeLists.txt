@@ -27,10 +27,15 @@ art_make( BASENAME_ONLY MODULE_LIBRARIES
 
   cetlib cetlib_except
   ${ROOT_BASIC_LIB_LIST}
-  EXCLUDE LinHitFinderAlg1_tool.cc 
+  EXCLUDE LinHitFinderAlg1_tool.cc LinHitFinderAlg2_tool.cc
   )
 
 simple_plugin(LinHitFinderAlg1 "tool"
+  fhiclcpp cetlib cetlib_except
+  ${Boost_SYSTEM_LIBRARY}
+)
+
+simple_plugin(LinHitFinderAlg2 "tool"
   fhiclcpp cetlib cetlib_except
   ${Boost_SYSTEM_LIBRARY}
 )

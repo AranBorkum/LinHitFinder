@@ -1,9 +1,9 @@
-#include "dune/LinHitFinder/LinHitFinderAlg1.h"
+#include "dune/LinHitFinder/LinHitFinderAlg2.h"
 #include "dune/LinHitFinder/Algorithms.h"
 
 #include <algorithm>
 
-LinHitFinderAlg1::LinHitFinderAlg1(fhicl::ParameterSet const & p)
+LinHitFinderAlg2::LinHitFinderAlg2(fhicl::ParameterSet const & p)
   : fThreshold          (p.get< unsigned int       >("Threshold"              , 20  )),
     fUseSignalKill      (p.get< bool               >("UseSignalKill"          , true)),
     fSignalKillLookahead(p.get< short              >("SignalKillLookahead"    , 5   )),
@@ -13,9 +13,7 @@ LinHitFinderAlg1::LinHitFinderAlg1(fhicl::ParameterSet const & p)
     fDoFiltering        (p.get< bool               >("DoFiltering"            , true)),
     fDownsampleFactor   (p.get< unsigned int       >("DownsampleFactor"       , 1   )),
     fFilterTaps         (p.get< std::vector<short> >("FilterCoeffs"           , {2, 9, 23, 31, 23, 9, 2})),
-    fMultiplier         (std::accumulate(fFilterTaps.begin(), fFilterTaps.end  (), 0)),
-    fOutputFilename     (p.get< std::string        >("OutputFile", "DataOut.txt"    )),
-    fOutputFile         (fOutputFilename){
+    fMultiplier         (std::accumulate(fFilterTaps.begin(), fFilterTaps.end  (), 0)) {
   std::cout << "Threshold is: " << fThreshold << std::endl;
 }
 
@@ -30,7 +28,7 @@ LinHitFinderAlg1::LinHitFinderAlg1(fhicl::ParameterSet const & p)
 |                                                      |_|              |___/
 */
 
-std::vector<short> LinHitFinderAlg1::downSample(const std::vector<short>& origional) {
+std::vector<short> LinHitFinderAlg2::downSample(const std::vector<short>& origional) {
   if (fDownsampleFactor == 1) {
     return origional;
   }
@@ -44,54 +42,6 @@ std::vector<short> LinHitFinderAlg1::downSample(const std::vector<short>& origio
 }
 
 /*
-|   _____         _           _        _    _____       _     _                  _   _             
-|  |  __ \       | |         | |      | |  / ____|     | |   | |                | | (_)            
-|  | |__) |__  __| | ___  ___| |_ __ _| | | (___  _   _| |__ | |_ _ __ __ _  ___| |_ _  ___  _ __  
-|  |  ___/ _ \/ _` |/ _ \/ __| __/ _` | |  \___ \| | | | '_ \| __| '__/ _` |/ __| __| |/ _ \| '_ \ 
-|  | |  |  __/ (_| |  __/\__ \ || (_| | |  ____) | |_| | |_) | |_| | | (_| | (__| |_| | (_) | | | |
-|  |_|   \___|\__,_|\___||___/\__\__,_|_| |_____/ \__,_|_.__/ \__|_|  \__,_|\___|\__|_|\___/|_| |_|
-|                                                                                                  
-*/
-   
-std::vector<short> LinHitFinderAlg1::findPedestal(const std::vector<short>& waveform) {
-  const std::vector<short>& pedestal = fUseSignalKill ?
-    cautiousPedestalSigKill(waveform            ,
-			    fSignalKillLookahead,
-			    fSignalKillThreshold,
-			    fSignalKillNContig  ) :
-    cautiousPedestalSubtraction(waveform, fCautiousNContig);
-  return pedestal;
-}
-
-/*
-|   ______ _ _ _            _             
-|  |  ____(_) | |          (_)            
-|  | |__   _| | |_ ___ _ __ _ _ __   __ _ 
-|  |  __| | | | __/ _ \ '__| | '_ \ / _` |
-|  | |    | | | ||  __/ |  | | | | | (_| |
-|  |_|    |_|_|\__\___|_|  |_|_| |_|\__, |
-|                                    __/ |
-|                                   |___/ 
-*/
-
-std::vector<short> LinHitFinderAlg1::filter(const std::vector<short>& pedestalSubtracted) {
-  const size_t nTaps = fFilterTaps.size();
-  const short*  Taps = fFilterTaps.data();
-
-  std::vector<short> filtered(fDoFiltering ?
-			      FIRFilering(pedestalSubtracted, nTaps, Taps):
-			      pedestalSubtracted);
-
-  if (!fDoFiltering) {
-    std::transform(filtered.begin(),
-		   filtered.end  (),
-		   filtered.begin(),
-		   [=](short a) { return a*fMultiplier; });
-  }
-  return filtered;
-}
-
-/*
 |   ____  _             _   _    _ _ _     ______ _           _ _             
 |  |  _ \(_)           | | | |  | (_) |   |  ____(_)         | (_)            
 |  | |_) |_ _ __   ___ | | | |__| |_| |_  | |__   _ _ __   __| |_ _ __   __ _ 
@@ -102,7 +52,7 @@ std::vector<short> LinHitFinderAlg1::filter(const std::vector<short>& pedestalSu
 |          |_|                                                          |___/ 
 */
 
-void LinHitFinderAlg1::hitFinding(const std::vector<short>& waveform,
+void LinHitFinderAlg2::hitFinding(const std::vector<short>& waveform,
 				  std::vector<LinHitFinderAlgorithm::Hit>& hits,
 				  int channel) {
 
@@ -110,6 +60,7 @@ void LinHitFinderAlg1::hitFinding(const std::vector<short>& waveform,
   bool wasPosHit = false; bool wasNegHit = false;
   int  posMax    = 0    ; int  negMax    = 0    ;
 
+  
   LinHitFinderAlgorithm::Hit hit(channel, 0, 0, 0, 0, 0, 0, 0, 0);
   for (size_t iSample=0; iSample<waveform.size(); ++iSample) {
     int   sampleTime = iSample * fDownsampleFactor;
@@ -124,12 +75,6 @@ void LinHitFinderAlg1::hitFinding(const std::vector<short>& waveform,
       hit.timeOverThresholdPos += fDownsampleFactor;
     }
     if (isPosHit && wasPosHit) {
-      hit.startTimePos          = sampleTime       ;
-      hit.chargePos             = adc              ;
-      hit.timeOverThresholdPos += fDownsampleFactor;
-    }
-    if (isPosHit && wasPosHit) {
-      
       hit.chargePos            += adc * fDownsampleFactor;
       hit.timeOverThresholdPos += fDownsampleFactor      ;
       if (adc > posMax) posMax = adc                     ;
@@ -175,8 +120,8 @@ void LinHitFinderAlg1::hitFinding(const std::vector<short>& waveform,
 }
 
 
-std::vector<LinHitFinderAlg1::Hit>
-LinHitFinderAlg1::findHits(const std::vector<unsigned int>& ChannelNumbers, 
+std::vector<LinHitFinderAlg2::Hit>
+LinHitFinderAlg2::findHits(const std::vector<unsigned int>& ChannelNumbers, 
 			   const std::vector<std::vector<short>>& inductionSamples) {
 
   // Make the storage for the hits you're going to make
@@ -191,15 +136,9 @@ LinHitFinderAlg1::findHits(const std::vector<unsigned int>& ChannelNumbers,
   for (size_t it=0; it<inductionSamples.size(); ++it) {
     const std::vector<short>& origionalWaveform = inductionSamples[it];
 
-    std::vector<short> waveform = downSample  (origionalWaveform);
-    std::vector<short> pedestal = findPedestal(waveform);
-    std::vector<short> pedestalSubtracted(waveform.size(), 0);
+    std::vector<short> waveform = downSample(origionalWaveform);
+    hitFinding(waveform, hits, ChannelNumbers[it]);
 
-    for (size_t i=0; i<pedestalSubtracted.size(); ++i)
-      pedestalSubtracted[i] = waveform[i] - pedestal[i];
-
-    std::vector<short> filtered = filter(pedestalSubtracted);
-    hitFinding(pedestalSubtracted, hits, ChannelNumbers[it]);
   }
 
   std::cout << "Returning "      << hits.size() << " hits" << std::endl;
@@ -208,4 +147,4 @@ LinHitFinderAlg1::findHits(const std::vector<unsigned int>& ChannelNumbers,
   return hits;
 }
 
-DEFINE_ART_CLASS_TOOL(LinHitFinderAlg1)
+DEFINE_ART_CLASS_TOOL(LinHitFinderAlg2)
