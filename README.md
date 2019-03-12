@@ -1,5 +1,9 @@
 <p align="center"><img width=75% src="https://github.com/AranBorkum/LinHitFinder/blob/master/InductionWireHitFit.png"></p>
-![dunetpc_version](https://img.shields.io/badge/dunetpc_version-v08_12_00-brightgreen.svg) ![Dependencies](https://img.shields.io/badge/dependencies-standard-orange.svg)  ![issues](https://img.shields.io/badge/issues-none_known-orange.svg) ![Contributions welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg) ![LArSoft](https://img.shields.io/badge/LArSoft-v08_12_00-brightgreen.svg) 
+![dunetpc](https://img.shields.io/badge/dunetpc_version-v08_12_00-brightgreen.svg) 
+![Dependencies](https://img.shields.io/badge/dependencies-standard-orange.svg)  
+![issues](https://img.shields.io/badge/issues-none_known-orange.svg) 
+![Contributions welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg) 
+![LArSoft](https://img.shields.io/badge/LArSoft-v08_12_00-brightgreen.svg) 
 # Hit finder module for induction wires
 
 # Basic Overview:
