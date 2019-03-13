@@ -99,11 +99,15 @@ void HitDumper::analyze(art::Event const& e) {
     bool   ThereIsAnotherPeak    = false;
 
     double RA = 0;
+		 
     for (size_t i=0; i<digit[event].ADCs().size(); ++i) {
-      RA += ((double)digit[event].ADCs()[i] - RA)/((double)i + 1);
-      std::cout << RA << " ";
+      if (i <  4) continue;
+      if (i == 4) RA = (double)digit[event].ADCs()[i];
+      RA += ((double)digit[event].ADCs()[i] - RA)/((double)i);
+      fOutputFileData << RA << " ";
     }
-					    
+    fOutputFileData << std::endl;
+    
 
     // Calculating the pedestal value
     for (size_t ADC=5; ADC<digit[event].ADCs().size(); ++ADC) 
@@ -164,10 +168,8 @@ void HitDumper::analyze(art::Event const& e) {
 		       << BipolMiddleBin        << "\t"
 		       << BipolEndBin           << std::endl;
 
-      for (auto const& i: data) 
-	fOutputFileData << i << " ";
+
     }
-    fOutputFileData << std::endl;
 
   }
   

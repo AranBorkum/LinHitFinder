@@ -56,19 +56,34 @@ void LinHitFinderAlg2::hitFinding(const std::vector<short>& waveform,
 				  std::vector<LinHitFinderAlgorithm::Hit>& hits,
 				  int channel) {
 
-  bool isPosHit  = false; bool isNegHit  = false;
-  bool wasPosHit = false; bool wasNegHit = false;
-  int  posMax    = 0    ; int  negMax    = 0    ;
-
+  double pedestal = 0;
   
-  LinHitFinderAlgorithm::Hit hit(channel, 0, 0, 0, 0, 0, 0, 0, 0);
+  bool  isPosHit  = false; bool  isNegHit  = false;
+  bool  wasPosHit = false; bool  wasNegHit = false;
+  short posAmp    = 0    ; short negAmp    = 0    ;
+  short posAmpPos = 0    ; short negAmpPos = 0    ;
+
+  LinHitFinderAlgorithm::Hit hit(channel, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
   for (size_t iSample=0; iSample<waveform.size(); ++iSample) {
+
     int   sampleTime = iSample * fDownsampleFactor;
     short adc        = waveform[iSample];
 
-    isPosHit = adc >  (short)fThreshold;
-    isNegHit = adc < -(short)fThreshold;
-    
+
+    // Pedestal calculation
+    if (iSample == 4) pedestal  = (double)adc;
+    if (iSample  > 4) pedestal += ((double)adc - pedestal)/((double)iSample);
+
+    // See if we're in a hit peak!
+    // After 50 ticks the pedestal has pretty much converged
+    // Recast the value of the individial ADCs to ADC - pedestal
+    if (iSample > 50) {
+      adc -= (short)pedestal;
+      isPosHit = adc >  (short)fThreshold;
+      isNegHit = adc < -(short)fThreshold;
+    }
+
+    // Inside the positive hit
     if (isPosHit && !wasPosHit) {
       hit.startTimePos          = sampleTime       ;
       hit.chargePos             = adc              ;
@@ -77,27 +92,38 @@ void LinHitFinderAlg2::hitFinding(const std::vector<short>& waveform,
     if (isPosHit && wasPosHit) {
       hit.chargePos            += adc * fDownsampleFactor;
       hit.timeOverThresholdPos += fDownsampleFactor      ;
-      if (adc > posMax) posMax = adc                     ;
+      if (adc > posAmp) {
+	posAmp = adc;
+	posAmpPos = sampleTime;
+      }
     }
     if (!isPosHit && wasPosHit) {
       hit .chargePos /= fMultiplier;
+      hit .posAmplitude = posAmp;
+      hit .posAmpPosition = posAmpPos;
     }
 
+    // Inside the negative hit
     if (isNegHit && !wasNegHit) {
-      hit.startTimeNeg         = sampleTime       ;
-      hit.chargeNeg            = abs(adc)         ;
-      hit.timeOverThresholdNeg = fDownsampleFactor;
+      hit.startTimeNeg          = sampleTime       ;
+      hit.chargeNeg             = abs(adc)         ;
+      hit.timeOverThresholdNeg += fDownsampleFactor;
     }
     if (isNegHit && wasNegHit) {
       hit.chargeNeg            += abs(adc) * fDownsampleFactor;
-      hit.timeOverThresholdPos += fDownsampleFactor           ;
-      if (abs(adc) > negMax) negMax = abs(adc)                ;
+      hit.timeOverThresholdNeg += fDownsampleFactor           ;
+      if (abs(adc) > negAmp) {
+	negAmp = abs(adc);
+	negAmpPos = sampleTime;
+      }
     }
     if (!isNegHit && wasNegHit) {
       hit .chargeNeg /= fMultiplier;
-      hit .posAmplitude = posMax   ;
-      hit .negAmplitude = negMax   ;
-      hits.push_back(hit)          ;
+      hit .negAmplitude = negAmp;
+      hit .negAmpPosition = negAmpPos;
+
+      if ((negAmpPos - posAmpPos) < 50)
+	hits.push_back(hit);
     }
     
     wasPosHit = isPosHit;
