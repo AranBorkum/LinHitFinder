@@ -3,6 +3,39 @@
 
 #include <algorithm>
 
+std::vector<short> GetLinFitParameters(short posAmp   ,    // Maximum adc value of the peak of the hit
+					short posAmpPos,    // Time of the maximum adc value in tick
+					short threshold,    // Threshold value for the current scheme
+					short peakStart,    // Time the hit crosses the threshold value on the left in ticks
+					short peakEnd       // Time the hit crosses the threshold value on the right in ticks
+					) {
+    
+  // Define the values that you want to get out of the function
+  short risingGradient  = 0; short risingIntercept  = 0; short leftZeroPoint  = 0;
+  short fallingGradient = 0; short fallingIntercept = 0; short rightZeroPoint = 0;
+
+  // Calcualte the gradients
+  risingGradient  = (posAmp -  threshold) / (posAmpPos - peakStart);
+  fallingGradient = (posAmp -  threshold) / (posAmpPos - peakEnd  );
+
+  // Calculate the intercepts
+  risingIntercept  = posAmp - (posAmpPos * risingGradient );
+  fallingIntercept = posAmp - (posAmpPos * fallingGradient);
+
+  // Calculate the zero points
+  leftZeroPoint  = (-1 * ( risingIntercept)) / ( risingGradient);
+  rightZeroPoint = (-1 * (fallingIntercept)) / (fallingGradient);
+
+  std::vector<short> OutputParameters = {risingGradient  ,
+					 risingIntercept ,
+					 leftZeroPoint   ,
+					 fallingGradient ,
+					 fallingIntercept,
+					 rightZeroPoint  };
+  return OutputParameters;
+  
+}
+
 LinHitFinderAlg2::LinHitFinderAlg2(fhicl::ParameterSet const & p)
   : fThreshold          (p.get< unsigned int       >("Threshold"              , 20  )),
     fUseSignalKill      (p.get< bool               >("UseSignalKill"          , true)),

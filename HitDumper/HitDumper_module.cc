@@ -55,7 +55,7 @@ HitDumper::HitDumper(fhicl::ParameterSet const & p)
 void HitDumper::analyze(art::Event const& e) {
 
   // Definition of the threshold, pedestal and pedestal subtracted data values
-  int threshold = 15;
+  int threshold = 30;
   int pedestal = 0;
   std::vector<int> data;
   
@@ -82,32 +82,12 @@ void HitDumper::analyze(art::Event const& e) {
 
     if (!IsInduction) continue;
 
-    // Filling the vector of pedestal subtracted ADC values
-    // Checking to see if there is a dissernable peak is the dataset
-    int    PositivePeakAmplitude = 0    ;
-    int    NegativePeakAmplitude = 0    ;
-    int    PositivePeakPosition  = 0    ;
-    int    NegativePeakPosition  = 0    ;
-    int    PositivePeakArea      = 0    ;
-    int    NegativePeakArea      = 0    ;
-    double PositivePeakRMS       = 0    ;
-    double NegativePeakRMS       = 0    ;
-    int    BipolStartBin         = 0    ;
-    int    BipolMiddleBin        = 0    ;
-    int    BipolEndBin           = 0    ;
-    bool   ThereIsAPeak          = false;
-    bool   ThereIsAnotherPeak    = false;
-
-    double RA = 0;
-		 
-    for (size_t i=0; i<digit[event].ADCs().size(); ++i) {
-      if (i <  4) continue;
-      if (i == 4) RA = (double)digit[event].ADCs()[i];
-      RA += ((double)digit[event].ADCs()[i] - RA)/((double)i);
-      fOutputFileData << RA << " ";
-    }
-    fOutputFileData << std::endl;
-    
+    int startTick = 0;
+    int hitPeak   = 0;
+    int peakTime  = 0;
+    int endTick   = 0;
+    bool ThereIsAPeak = false;
+    bool ThereIsAnotherPeak = false;
 
     // Calculating the pedestal value
     for (size_t ADC=5; ADC<digit[event].ADCs().size(); ++ADC) 
@@ -123,54 +103,39 @@ void HitDumper::analyze(art::Event const& e) {
       if (ADCValue <= -(double)threshold) ThereIsAnotherPeak = true;
     }
 
-    if (!ThereIsAPeak || !ThereIsAnotherPeak) continue;
-    // Filling the output file with the pedistal subtracted ADC values if there
-    // is a peak in the data. Threshold value is considered
-    // This loop is also going to have the primitive calculations for the sake of
-    // speed and efficiency
-    for (size_t bin=0; bin<data.size(); ++bin) {
+    if (!ThereIsAPeak && !ThereIsAnotherPeak) continue;
 
-      if (data[bin] > PositivePeakAmplitude) { PositivePeakAmplitude = data[bin]; PositivePeakPosition = bin; }
-      if (data[bin] < NegativePeakAmplitude) { NegativePeakAmplitude = data[bin]; NegativePeakPosition = bin; }
-      if (abs(NegativePeakPosition - PositivePeakPosition) > 20) continue;
-      
+    for (auto const& i: data) {
+      fOutputFileData << i << " ";
+    }
+    fOutputFileData << std::endl;
+    
+    for (size_t adc=0; adc<data.size(); ++adc) {
+
+      bool isHit  = false;
+      bool wasHit = false;
+
+      isHit = (int)adc > (int)threshold;
+
+      if (isHit && !wasHit) {
+	startTick = adc;
+      }
+      if (isHit && wasHit) {
+	if (data[adc] > hitPeak) {
+	  hitPeak = data[adc];
+	  peakTime = adc;
+	}
+      }
+      if (!isHit && wasHit) {
+	endTick = 0;
+      }
     }
 
-    // Calculating the start, middle and end points of the bipole
-    BipolStartBin  = PositivePeakPosition;
-    BipolMiddleBin = PositivePeakPosition;
-    BipolEndBin    = NegativePeakPosition;
+    fOutputFilePrims << startTick << " "
+		     << endTick   << " "
+		     << peakTime  << " "
+		     << hitPeak   << std::endl;
     
-    while (data[BipolStartBin ] > 0) { BipolStartBin --; }
-    while (data[BipolMiddleBin] > 0) { BipolMiddleBin++; }
-    while (data[BipolEndBin   ] < 0) { BipolEndBin   ++; }
-
-    for (int adc=(int)BipolStartBin ; adc<(int)BipolMiddleBin; ++adc) PositivePeakArea += abs(data[adc]);
-    for (int adc=(int)BipolMiddleBin; adc<(int)BipolEndBin   ; ++adc) NegativePeakArea += abs(data[adc]);
-
-    PositivePeakRMS = (double)(BipolMiddleBin - BipolStartBin ) / 2.0; 
-    NegativePeakRMS = (double)(BipolEndBin    - BipolMiddleBin) / 2.0;
-    
-    if (BipolStartBin != BipolMiddleBin &&
-	abs(NegativePeakPosition - PositivePeakPosition) < 20) {
-
-      // Starting with all of the positive peak stuff
-      // Space line will seperate the negative peak stuff
-      fOutputFilePrims << PositivePeakAmplitude << "\t"
-		       << PositivePeakPosition  << "\t"
-		       << PositivePeakArea      << "\t"
-		       << PositivePeakRMS       << "\t"
-		       << NegativePeakAmplitude << "\t"
-		       << NegativePeakPosition  << "\t" 
-		       << NegativePeakArea      << "\t"
-		       << NegativePeakRMS       << "\t"
-		       << BipolStartBin         << "\t"
-		       << BipolMiddleBin        << "\t"
-		       << BipolEndBin           << std::endl;
-
-
-    }
-
   }
   
 }
