@@ -96,7 +96,7 @@ void LinHitFinderAlg2::hitFinding(const std::vector<short>& waveform,
   short posAmp    = 0    ; short negAmp    = 0    ;
   short posAmpPos = 0    ; short negAmpPos = 0    ;
 
-  LinHitFinderAlgorithm::Hit hit(channel, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+  LinHitFinderAlgorithm::Hit hit(channel, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
   for (size_t iSample=0; iSample<waveform.size(); ++iSample) {
 
     int   sampleTime = iSample * fDownsampleFactor;

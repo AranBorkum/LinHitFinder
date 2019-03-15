@@ -99,7 +99,7 @@ void LinHitFinder::produce(art::Event & e) {
 			      hit.timeOverThresholdPos                 ,  //RMS		 
 			      hit.startTimePos                         ,  //PEAK_TIME	 
 			      0                                        ,  //SIGMA_PEAK_TIME	 
-			      0                                        ,  //PEAK_AMPLITUDE	 
+			      hit.posAmplitude                         ,  //PEAK_AMPLITUDE	 
 			      0                                        ,  //SIGMA_PEAK_AMPLITUDE
 			      hit.chargePos                            ,  //HIT_INTEGRAL	 
 			      0                                        ,  //HIT_SIGMA_INTEGRAL
