@@ -55,7 +55,7 @@ HitDumper::HitDumper(fhicl::ParameterSet const & p)
 void HitDumper::analyze(art::Event const& e) {
 
   // Definition of the threshold, pedestal and pedestal subtracted data values
-  int threshold = 30;
+  int threshold = 20;
   int pedestal = 0;
   std::vector<int> data;
   
@@ -99,36 +99,41 @@ void HitDumper::analyze(art::Event const& e) {
     for (size_t ADC=5; ADC<digit[event].ADCs().size(); ++ADC) {
       int ADCValue = (int)digit[event].ADCs()[ADC] - (int)pedestal;
       data.push_back( ADCValue );
-      if (ADCValue >=  (double)threshold) ThereIsAPeak       = true;
-      if (ADCValue <= -(double)threshold) ThereIsAnotherPeak = true;
+      if (ADCValue >=  threshold) ThereIsAPeak       = true;
+      if (ADCValue <= -threshold) ThereIsAnotherPeak = true;
     }
 
-    if (!ThereIsAPeak && !ThereIsAnotherPeak) continue;
+    if (!ThereIsAPeak || !ThereIsAnotherPeak) continue;
 
+    // Fill the data file output
     for (auto const& i: data) {
       fOutputFileData << i << " ";
     }
     fOutputFileData << std::endl;
-    
+
+    bool isHit  = false;
+    bool wasHit = false;
+
+    // Loop over the data in the waveform
     for (size_t adc=0; adc<data.size(); ++adc) {
 
-      bool isHit  = false;
-      bool wasHit = false;
-
-      isHit = (int)adc > (int)threshold;
+      isHit = (int)data[adc] > (int)threshold;
 
       if (isHit && !wasHit) {
 	startTick = adc;
       }
       if (isHit && wasHit) {
 	if (data[adc] > hitPeak) {
-	  hitPeak = data[adc];
-	  peakTime = adc;
+	  hitPeak = (int)data[adc];
+	  peakTime = (int)adc;
 	}
       }
       if (!isHit && wasHit) {
-	endTick = 0;
+	endTick = adc;
       }
+
+      wasHit = isHit; 
+      
     }
 
     fOutputFilePrims << startTick << " "

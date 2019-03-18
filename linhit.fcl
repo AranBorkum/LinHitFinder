@@ -1,0 +1,19 @@
+BEGIN_PROLOG
+
+# This is the generic trigger primitive finder call. To make your own,
+#  add another call to "@local::trigprimpass1" to the producers list,
+#  and modify its settings later on
+
+linhitalg2: {
+   module_type: "LinHitFinder"
+   InputTag: "simwire"
+   finder: {
+      tool_type: "LinHitFinderAlg2"
+      UseSignalKill: true
+      SignalKillLookahead: 6
+      SignalKillThreshold: 15
+      SignalKillNContig: 10
+   }
+}
+
+END_PROLOG

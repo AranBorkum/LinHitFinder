@@ -93,15 +93,15 @@ void LinHitFinderAlg2::hitFinding(const std::vector<short>& waveform,
   
   bool  isPosHit  = false; bool  isNegHit  = false;
   bool  wasPosHit = false; bool  wasNegHit = false;
-  short posAmp    = 0    ; short negAmp    = 0    ;
-  short posAmpPos = 0    ; short negAmpPos = 0    ;
 
+  int AmplitudePos = 0; int AmplitudeNeg = 0;
+  int PeakTimePos  = 0; int PeakTimeNeg  = 0;
+  
   LinHitFinderAlgorithm::Hit hit(channel, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
   for (size_t iSample=0; iSample<waveform.size(); ++iSample) {
 
     int   sampleTime = iSample * fDownsampleFactor;
     short adc        = waveform[iSample];
-
 
     // Pedestal calculation
     if (iSample == 4) pedestal  = (double)adc;
@@ -116,68 +116,79 @@ void LinHitFinderAlg2::hitFinding(const std::vector<short>& waveform,
       isNegHit = adc < -(short)fThreshold;
     }
 
-    // Inside the positive hit
+/*
+|   _____          _ _   _           
+|  |  __ \        (_) | (_)          
+|  | |__) |__  ___ _| |_ ___   _____ 
+|  |  ___/ _ \/ __| | __| \ \ / / _ \
+|  | |  | (_) \__ \ | |_| |\ V /  __/
+|  |_|   \___/|___/_|\__|_| \_/ \___|
+|                                    
+|                                    
+*/
+    // Find the positive hit
+    // record all of the starting data about it
     if (isPosHit && !wasPosHit) {
-      hit.startTimePos          = sampleTime       ;
-      hit.chargePos             = adc              ;
+      hit.startTimePos = sampleTime                ;
+      hit.chargePos    = adc                       ;
       hit.timeOverThresholdPos += fDownsampleFactor;
     }
+
+    // Now inside the Hit, find some primatives
+    // Amplitude and the peak time
     if (isPosHit && wasPosHit) {
+      if (adc > AmplitudePos) {AmplitudePos = adc; PeakTimePos = sampleTime;}
       hit.chargePos            += adc * fDownsampleFactor;
-      hit.timeOverThresholdPos += fDownsampleFactor      ;
-      if (adc > posAmp) {
-	posAmp = adc;
-	posAmpPos = sampleTime;
-      }
+      hit.timeOverThresholdPos += fDownsampleFactor;
     }
+
+    // Now at the end of the hit
+    // record the end time of the hit
     if (!isPosHit && wasPosHit) {
-      hit .chargePos /= fMultiplier;
-      hit .posAmplitude = posAmp;
-      hit .posAmpPosition = posAmpPos;
+      hit.endTimePos = sampleTime;
     }
 
-    // Inside the negative hit
-    if (isNegHit && !wasNegHit) {
-      hit.startTimeNeg          = sampleTime       ;
-      hit.chargeNeg             = abs(adc)         ;
-      hit.timeOverThresholdNeg += fDownsampleFactor;
-    }
-    if (isNegHit && wasNegHit) {
-      hit.chargeNeg            += abs(adc) * fDownsampleFactor;
-      hit.timeOverThresholdNeg += fDownsampleFactor           ;
-      if (abs(adc) > negAmp) {
-	negAmp = abs(adc);
-	negAmpPos = sampleTime;
-      }
-    }
-    if (!isNegHit && wasNegHit) {
-      hit .chargeNeg /= fMultiplier;
-      hit .negAmplitude = negAmp;
-      hit .negAmpPosition = negAmpPos;
-
-      if ((negAmpPos - posAmpPos) < 50)
-	hits.push_back(hit);
-    }
-    
     wasPosHit = isPosHit;
-    wasNegHit = isNegHit;
 
 /*
-| The hit finder works! Or at least it is actually finding and making hits.
-| Things to do now:
-|   - Now I need to actually impliment my hit finding method because I think it's better
-|   - Update the hit class from LinHitAlgorithm to include all of the other primatives
-|   - Neaten up this code because it looks pretty ugly
-|   - See if the noise count goes down after implimenting my algorithm (see HitDumper_module.cc)
-|   - Produce trees for positive peaks, negative peaks, bipole peaks (purely for completeness)
-|   - Run over more MCC11 files to see what larger statistics will look like
-|   - Do the clustering and see what the clustering efficiency will turn out like
-|
-|   - REALLY IMPORTANT: include a similar procedure for the collection hits. Should be really easy
-*/    
+|   _   _                  _   _           
+|  | \ | |                | | (_)          
+|  |  \| | ___  __ _  __ _| |_ ___   _____ 
+|  | . ` |/ _ \/ _` |/ _` | __| \ \ / / _ \
+|  | |\  |  __/ (_| | (_| | |_| |\ V /  __/
+|  |_| \_|\___|\__, |\__,_|\__|_| \_/ \___|
+|               __/ |                      
+|              |___/                       
+| 
+*/
+    // Find the negative hit
+    // record all of the starting data about it
+    if (isNegHit && !wasNegHit) {
+      hit.startTimeNeg = sampleTime;
+      hit.chargeNeg += adc;
+      hit.timeOverThresholdNeg += fDownsampleFactor;
+    }
+
+    // Now inside the Hit, find some of the primatives
+    // Amplitude and peak time
+    if (isNegHit && wasNegHit) {
+      if (adc < AmplitudeNeg) {AmplitudeNeg = adc; PeakTimeNeg = sampleTime;}
+      hit.chargeNeg += abs(adc) * fDownsampleFactor;
+      hit.timeOverThresholdNeg += fDownsampleFactor;
+    }
+
+    // Now at the end of the hit
+    // record the end time of the hit
+    if (!isNegHit && wasNegHit) {
+      hit.endTimeNeg = sampleTime;
+      if ((PeakTimeNeg - PeakTimePos) < 50) {hits.push_back(hit);}
+    }
+
+    wasNegHit = isNegHit;
+    
   }
 }
-
+  
 
 std::vector<LinHitFinderAlg2::Hit>
 LinHitFinderAlg2::findHits(const std::vector<unsigned int>& ChannelNumbers, 
